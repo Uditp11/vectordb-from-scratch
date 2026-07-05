@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Vector Database Observatory — a developer workbench for semantic search, document embedding, and RAG queries.">
+<title>Vector DB Observatory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+/* ── RESET ── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:        #0d1117;
+  --panel:     #161b22;
+  --surface:   #21262d;
+  --border:    #30363d;
+  --text1:     #e6edf3;
+  --text2:     #8b949e;
+  --accent:    #e8a838;
+  --accent2:   #58a6ff;
+  --success:   #3fb950;
+  --danger:    #f85149;
+  --font-ui:   'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --radius:    3px;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text1);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── APP SHELL ── */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+#header {
+  height: 38px;
+  min-height: 38px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+  z-index: 10;
+}
+
+#header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255,255,255,0.012) 2px,
+    rgba(255,255,255,0.012) 4px
+  );
+  pointer-events: none;
+  animation: scanlines 8s linear infinite;
+}
+
+@keyframes scanlines {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(4px); }
+}
+
+.header-logo {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.header-logo .dot {
+  width: 7px;
+  height: 7px;
+  background: var(--accent);
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+
+.header-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+}
+
+.header-label {
+  font-size: 11px;
+  color: var(--text2);
+  font-family: var(--font-mono);
+  letter-spacing: 0.3px;
+}
+
+/* ── BODY ── */
+#body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── SIDEBAR ── */
+#sidebar {
+  width: 56px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.sidebar-btn {
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  color: var(--text2);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-family: var(--font-ui);
+  font-size: 8.5px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  transition: color 0.1s, background 0.1s;
+  position: relative;
+}
+
+.sidebar-btn .icon {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.sidebar-btn:hover {
+  color: var(--text1);
+  background: var(--surface);
+}
+
+.sidebar-btn.active {
+  color: var(--accent);
+}
+
+.sidebar-btn.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 0 1px 1px 0;
+}
+
+.sidebar-spacer { flex: 1; }
+
+/* ── MAIN CONTENT ── */
+#main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tab-panel {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+.tab-panel.active {
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-panel::-webkit-scrollbar { width: 6px; }
+.tab-panel::-webkit-scrollbar-track { background: transparent; }
+.tab-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.tab-panel::-webkit-scrollbar-thumb:hover { background: var(--text2); }
+
+/* ── SECTION TITLES ── */
+.section-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── COMMAND INPUT ── */
+.cmd-input-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 12px;
+  height: 36px;
+  gap: 8px;
+  transition: border-color 0.1s;
+}
+
+.cmd-input-wrap:focus-within {
+  border-color: var(--accent);
+}
+
+.cmd-prefix {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--accent);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.cmd-input-wrap input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text1);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 36px;
+}
+
+.cmd-input-wrap input::placeholder {
+  color: var(--text2);
+  opacity: 0.6;
+}
+
+/* ── CURSOR BLINK ── */
+.cursor-blink {
+  width: 1px;
+  height: 16px;
+  background: var(--accent);
+  animation: blink 1s step-end infinite;
+  flex-shrink: 0;
+  display: none;
+}
+
+.cmd-input-wrap:focus-within .cursor-blink { display: block; }
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* ── SEGMENTED TOGGLE ── */
+.toggle-group {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.toggle-btn {
+  background: var(--bg);
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.08s, color 0.08s;
+}
+
+.toggle-btn:last-child { border-right: none; }
+
+.toggle-btn:hover {
+  background: var(--surface);
+  color: var(--text1);
+}
+
+.toggle-btn.active {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* ── BUTTONS ── */
+.btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text1);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: background 0.08s, transform 0.05s;
+  user-select: none;
+}
+
+.btn:hover { background: var(--border); }
+.btn:active { transform: scale(0.98); }
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+.btn-primary:hover { background: #d49a30; border-color: #d49a30; }
+
+.btn-danger {
+  color: var(--danger);
+  border-color: transparent;
+  background: transparent;
+  padding: 3px 8px;
+}
+
+.btn-danger:hover { background: rgba(248,81,73,0.1); }
+
+.btn.loading { pointer-events: none; opacity: 0.7; }
+
+/* ── THREE-DOT ANIMATION ── */
+@keyframes dotPulse {
+  0%, 80%, 100% { opacity: 0.2; }
+  40% { opacity: 1; }
+}
+
+.dots span {
+  animation: dotPulse 1.4s ease-in-out infinite;
+  font-weight: bold;
+}
+.dots span:nth-child(2) { animation-delay: 0.2s; }
+.dots span:nth-child(3) { animation-delay: 0.4s; }
+
+/* ── FORM CONTROLS ── */
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.form-row + .form-row { margin-top: 10px; }
+
+.form-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.k-input {
+  width: 52px;
+  height: 30px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text1);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: center;
+  outline: none;
+}
+
+.k-input:focus { border-color: var(--accent); }
+
+/* ── DATA TABLE ── */
+.data-table-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.data-table thead th {
+  background: var(--surface);
+  color: var(--text2);
+  font-weight: 500;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 7px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.data-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.05s;
+}
+
+.data-table tbody tr:last-child { border-bottom: none; }
+.data-table tbody tr:hover { background: rgba(139,148,158,0.05); }
+
+.data-table tbody td {
+  padding: 6px 12px;
+  color: var(--text1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+/* category dots */
+.cat-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 1px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.cat-cs      { background: var(--accent2); }
+.cat-math    { background: var(--accent); }
+.cat-food    { background: var(--success); }
+.cat-sports  { background: #f0883e; }
+.cat-default { background: var(--text2); }
+
+/* ── CHART AREA ── */
+.chart-area {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  padding: 12px;
+  position: relative;
+}
+
+.chart-area canvas {
+  width: 100% !important;
+  height: 320px !important;
+}
+
+/* ── BENCHMARK BAR ── */
+.bench-wrap {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  background: var(--bg);
+}
+
+.bench-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.bench-row:last-child { margin-bottom: 0; }
+
+.bench-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text2);
+  width: 80px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.bench-bar-track {
+  flex: 1;
+  height: 16px;
+  background: var(--surface);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.bench-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.bench-time {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text1);
+  width: 72px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── DOCUMENTS TAB ── */
+.doc-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.text-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text1);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  padding: 8px 12px;
+  outline: none;
+  resize: none;
+}
+
+.text-input:focus { border-color: var(--accent); }
+
+textarea.text-input {
+  min-height: 120px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.doc-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.warning-banner {
+  background: rgba(248,81,73,0.08);
+  border: 1px solid rgba(248,81,73,0.25);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--danger);
+  font-family: var(--font-mono);
+  margin-bottom: 12px;
+  display: none;
+}
+
+.info-banner {
+  background: rgba(88,166,255,0.08);
+  border: 1px solid rgba(88,166,255,0.2);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--accent2);
+  font-family: var(--font-mono);
+  margin-bottom: 12px;
+}
+
+.success-msg {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--success);
+}
+
+/* ── RAG / ASK TAB ── */
+.rag-output {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--success);
+  min-height: 160px;
+  max-height: 360px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-top: 12px;
+}
+
+.rag-output::-webkit-scrollbar { width: 5px; }
+.rag-output::-webkit-scrollbar-track { background: transparent; }
+.rag-output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.rag-output .rag-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 14px;
+  background: var(--success);
+  animation: blink 0.7s step-end infinite;
+  vertical-align: text-bottom;
+  margin-left: 1px;
+}
+
+.context-section {
+  margin-top: 14px;
+}
+
+.context-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: background 0.08s;
+}
+
+.context-chip:hover { background: var(--border); }
+
+.context-chip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--accent2);
+}
+
+.context-chip-body {
+  display: none;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.context-chip.open .context-chip-body { display: block; }
+
+.context-chip .arrow {
+  transition: transform 0.1s;
+}
+
+.context-chip.open .arrow { transform: rotate(90deg); }
+
+/* ── ERROR HINT ── */
+.error-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--danger);
+  margin-top: 8px;
+  display: none;
+}
+
+.error-hint.visible { display: block; }
+
+/* ── STATUS BAR ── */
+#statusbar {
+  height: 24px;
+  min-height: 24px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text2);
+  gap: 16px;
+  z-index: 10;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot.online  { background: var(--success); box-shadow: 0 0 4px rgba(63,185,80,0.4); }
+.status-dot.offline { background: var(--danger); box-shadow: 0 0 4px rgba(248,81,73,0.4); }
+
+.status-spacer { flex: 1; }
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  padding: 20px 0;
+  text-align: center;
+}
+
+/* ── UTILITIES ── */
+.mt-8  { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.gap-8 { gap: 8px; }
+.flex  { display: flex; }
+.flex-1 { flex: 1; }
+
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <div id="header">
+    <div class="header-logo"><span class="dot"></span>VECTOR DB</div>
+    <div class="header-sep"></div>
+    <div class="header-label">observatory v0.1</div>
+  </div>
+
+  <!-- BODY -->
+  <div id="body">
+
+    <!-- SIDEBAR -->
+    <nav id="sidebar">
+      <button class="sidebar-btn active" data-tab="search" id="nav-search">
+        <span class="icon">&#x25C6;</span>
+        Search
+      </button>
+      <button class="sidebar-btn" data-tab="documents" id="nav-documents">
+        <span class="icon">&#x25C7;</span>
+        Docs
+      </button>
+      <button class="sidebar-btn" data-tab="ask" id="nav-ask">
+        <span class="icon">&#x25B8;</span>
+        Ask AI
+      </button>
+      <div class="sidebar-spacer"></div>
+    </nav>
+
+    <!-- MAIN -->
+    <div id="main">
+
+      <!-- ═══════════ TAB 1: SEARCH ═══════════ -->
+      <div class="tab-panel active" id="panel-search">
+
+        <div class="section-title">Query Vector</div>
+
+        <div class="cmd-input-wrap">
+          <span class="cmd-prefix">&gt;_</span>
+          <input type="text" id="search-input" placeholder="paste 16-dim vector: 0.1, 0.3, -0.2, ..." spellcheck="false" autocomplete="off">
+          <span class="cursor-blink"></span>
+        </div>
+        <div class="error-hint" id="search-error"></div>
+
+        <div class="form-row mt-12">
+          <span class="form-label">Algo</span>
+          <div class="toggle-group" id="algo-toggle">
+            <button class="toggle-btn active" data-val="hnsw">HNSW</button>
+            <button class="toggle-btn" data-val="kdtree">KD-TREE</button>
+            <button class="toggle-btn" data-val="brute">BRUTE</button>
+          </div>
+
+          <span class="form-label" style="margin-left:8px;">Metric</span>
+          <div class="toggle-group" id="metric-toggle">
+            <button class="toggle-btn active" data-val="cosine">COSINE</button>
+            <button class="toggle-btn" data-val="euclidean">EUCLIDEAN</button>
+            <button class="toggle-btn" data-val="manhattan">MANHATTAN</button>
+          </div>
+
+          <span class="form-label" style="margin-left:8px;">K</span>
+          <input type="number" class="k-input" id="k-input" value="5" min="1" max="100">
+        </div>
+
+        <div class="form-row mt-12">
+          <button class="btn btn-primary" id="btn-search">SEARCH</button>
+          <button class="btn" id="btn-compare">COMPARE ALL</button>
+        </div>
+
+        <!-- RESULTS TABLE -->
+        <div id="search-results-wrap" style="display:none;" class="mt-16">
+          <div class="section-title">Results</div>
+          <div class="data-table-wrap">
+            <table class="data-table" id="results-table">
+              <thead>
+                <tr>
+                  <th style="width:48px">Rank</th>
+                  <th style="width:80px">ID</th>
+                  <th>Label</th>
+                  <th style="width:110px">Category</th>
+                  <th style="width:100px">Distance</th>
+                </tr>
+              </thead>
+              <tbody id="results-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- BENCHMARK -->
+        <div id="benchmark-wrap" style="display:none;" class="mt-16">
+          <div class="section-title">Benchmark</div>
+          <div class="bench-wrap" id="bench-results"></div>
+        </div>
+
+        <!-- SCATTER PLOT -->
+        <div class="mt-16">
+          <div class="section-title">Vector Space (PCA 2D)</div>
+          <div class="chart-area">
+            <canvas id="scatter-chart"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ═══════════ TAB 2: DOCUMENTS ═══════════ -->
+      <div class="tab-panel" id="panel-documents">
+
+        <div class="warning-banner" id="ollama-warning">Ollama is offline — embedding will fail. Start the Ollama service to enable document insertion.</div>
+
+        <div class="section-title">Embed Document</div>
+
+        <div class="doc-input-group">
+          <input type="text" class="text-input" id="doc-title" placeholder="Document title">
+          <textarea class="text-input" id="doc-text" placeholder="Paste document text here..."></textarea>
+          <div class="doc-actions">
+            <button class="btn btn-primary" id="btn-embed">EMBED &amp; INSERT</button>
+            <span class="success-msg" id="embed-success"></span>
+          </div>
+        </div>
+
+        <div class="mt-16">
+          <div class="section-title">Stored Documents</div>
+          <div class="data-table-wrap">
+            <table class="data-table" id="docs-table">
+              <thead>
+                <tr>
+                  <th style="width:72px">ID</th>
+                  <th style="width:160px">Title</th>
+                  <th style="width:64px">Chunk#</th>
+                  <th>Preview</th>
+                  <th style="width:56px"></th>
+                </tr>
+              </thead>
+              <tbody id="docs-body"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="docs-empty">No documents stored yet.</div>
+        </div>
+
+      </div>
+
+      <!-- ═══════════ TAB 3: ASK AI ═══════════ -->
+      <div class="tab-panel" id="panel-ask">
+
+        <div class="info-banner" id="ask-no-docs" style="display:none;">No documents embedded yet. Go to the Documents tab to add some first.</div>
+
+        <div class="section-title">RAG Query</div>
+
+        <div class="cmd-input-wrap">
+          <span class="cmd-prefix">&gt;_</span>
+          <input type="text" id="ask-input" placeholder="ask a question about your documents..." spellcheck="false" autocomplete="off">
+          <span class="cursor-blink"></span>
+        </div>
+
+        <div class="form-row mt-12">
+          <button class="btn btn-primary" id="btn-ask">ASK</button>
+        </div>
+
+        <div class="rag-output" id="rag-output"></div>
+
+        <div class="context-section" id="context-section" style="display:none;">
+          <div class="section-title">Context Sources</div>
+          <div id="context-chips"></div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div id="statusbar">
+    <div class="status-item" id="status-ollama">
+      <span class="status-dot offline" id="ollama-dot"></span>
+      <span id="ollama-label">OFFLINE</span>
+    </div>
+    <div class="status-item" id="status-vectors">
+      <span style="color:var(--text2);">vectors:</span>
+      <span id="vector-count" style="color:var(--text1);">--</span>
+    </div>
+    <div class="status-item">
+      <span style="color:var(--text2);">algo:</span>
+      <span id="status-algo" style="color:var(--text1);">HNSW</span>
+    </div>
+    <div class="status-spacer"></div>
+    <div class="status-item">
+      <span id="status-time" style="color:var(--text2);"></span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ══════════════════════════════════════════════
+   VECTOR DB OBSERVATORY — Client Logic
+   ══════════════════════════════════════════════ */
+
+(function () {
+  'use strict';
+
+  // ── STATE ──
+  let currentTab = 'search';
+  let ollamaOnline = false;
+  let scatterChart = null;
+  let allItems = [];
+
+  // ── DOM REFS ──
+  const $ = (s, p) => (p || document).querySelector(s);
+  const $$ = (s, p) => [...(p || document).querySelectorAll(s)];
+
+  // ── TAB NAVIGATION ──
+  $$('.sidebar-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      if (tab === currentTab) return;
+      $$('.sidebar-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      $$('.tab-panel').forEach(p => p.classList.remove('active'));
+      $(`#panel-${tab}`).classList.add('active');
+      currentTab = tab;
+      if (tab === 'documents') loadDocs();
+      if (tab === 'ask') checkDocsForAsk();
+    });
+  });
+
+  // ── TOGGLE GROUPS ──
+  function initToggleGroup(id) {
+    const wrap = $(`#${id}`);
+    wrap.addEventListener('click', e => {
+      const btn = e.target.closest('.toggle-btn');
+      if (!btn) return;
+      $$('.toggle-btn', wrap).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (id === 'algo-toggle') {
+        $('#status-algo').textContent = btn.dataset.val.toUpperCase();
+      }
+    });
+  }
+  initToggleGroup('algo-toggle');
+  initToggleGroup('metric-toggle');
+
+  function getToggleValue(id) {
+    const active = $(`#${id} .toggle-btn.active`);
+    return active ? active.dataset.val : '';
+  }
+
+  // ── HELPERS ──
+  function dots() {
+    return '<span class="dots"><span>.</span><span>.</span><span>.</span></span>';
+  }
+
+  function setLoading(btn, loading) {
+    if (loading) {
+      btn._origText = btn.textContent;
+      btn.innerHTML = dots();
+      btn.classList.add('loading');
+    } else {
+      btn.textContent = btn._origText || '';
+      btn.classList.remove('loading');
+    }
+  }
+
+  function catClass(cat) {
+    if (!cat) return 'cat-default';
+    const c = cat.toLowerCase();
+    if (c.includes('cs') || c.includes('computer')) return 'cat-cs';
+    if (c.includes('math')) return 'cat-math';
+    if (c.includes('food') || c.includes('cook')) return 'cat-food';
+    if (c.includes('sport')) return 'cat-sports';
+    return 'cat-default';
+  }
+
+  function catColor(cat) {
+    const cls = catClass(cat);
+    const map = { 'cat-cs': '#58a6ff', 'cat-math': '#e8a838', 'cat-food': '#3fb950', 'cat-sports': '#f0883e', 'cat-default': '#8b949e' };
+    return map[cls] || '#8b949e';
+  }
+
+  function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ── API HELPERS ──
+  async function api(url, opts) {
+    try {
+      const r = await fetch(url, opts);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r;
+    } catch (e) {
+      console.error('API error:', url, e);
+      throw e;
+    }
+  }
+
+  // ── STATUS BAR ──
+  function updateTime() {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    $('#status-time').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  }
+  setInterval(updateTime, 1000);
+  updateTime();
+
+  async function fetchStatus() {
+    try {
+      const r = await api('/status');
+      const d = await r.json();
+      ollamaOnline = !!d.ollama;
+      $('#ollama-dot').className = 'status-dot ' + (ollamaOnline ? 'online' : 'offline');
+      $('#ollama-label').textContent = ollamaOnline ? 'ONLINE' : 'OFFLINE';
+      if (currentTab === 'documents') {
+        $('#ollama-warning').style.display = ollamaOnline ? 'none' : 'block';
+      }
+    } catch {
+      ollamaOnline = false;
+      $('#ollama-dot').className = 'status-dot offline';
+      $('#ollama-label').textContent = 'OFFLINE';
+    }
+
+    try {
+      const r = await api('/stats');
+      const d = await r.json();
+      $('#vector-count').textContent = typeof d.count !== 'undefined' ? d.count : (d.vector_count ?? '--');
+    } catch {
+      // keep current value
+    }
+  }
+
+  fetchStatus();
+  setInterval(fetchStatus, 30000);
+
+  // ── SCATTER PLOT ──
+  function initChart() {
+    const ctx = $('#scatter-chart').getContext('2d');
+    scatterChart = new Chart(ctx, {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Vectors',
+          data: [],
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          pointBackgroundColor: [],
+          pointBorderColor: [],
+          pointBorderWidth: 1,
+        }, {
+          label: 'Query',
+          data: [],
+          pointRadius: 8,
+          pointBackgroundColor: '#e8a838',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointStyle: 'crossRot',
+        }, {
+          label: 'Connections',
+          data: [],
+          showLine: false,
+          pointRadius: 0,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 300 },
+        interaction: {
+          mode: 'nearest',
+          intersect: true,
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#21262d',
+            borderColor: '#30363d',
+            borderWidth: 1,
+            titleFont: { family: "'JetBrains Mono'", size: 11 },
+            bodyFont: { family: "'JetBrains Mono'", size: 10 },
+            titleColor: '#e6edf3',
+            bodyColor: '#8b949e',
+            padding: 8,
+            cornerRadius: 3,
+            callbacks: {
+              title(items) {
+                const i = items[0];
+                if (i.datasetIndex === 0 && allItems[i.dataIndex]) {
+                  return allItems[i.dataIndex].label || `Item ${allItems[i.dataIndex].id}`;
+                }
+                if (i.datasetIndex === 1) return 'Query Point';
+                return '';
+              },
+              label(item) {
+                if (item.datasetIndex === 0 && allItems[item.dataIndex]) {
+                  return `Category: ${allItems[item.dataIndex].category || 'N/A'}`;
+                }
+                return `(${item.parsed.x.toFixed(3)}, ${item.parsed.y.toFixed(3)})`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'PC1', color: '#8b949e', font: { family: "'JetBrains Mono'", size: 10 } },
+            grid: { color: 'rgba(48,54,61,0.5)', lineWidth: 0.5 },
+            ticks: { color: '#8b949e', font: { family: "'JetBrains Mono'", size: 9 } },
+            border: { color: '#30363d' },
+          },
+          y: {
+            title: { display: true, text: 'PC2', color: '#8b949e', font: { family: "'JetBrains Mono'", size: 10 } },
+            grid: { color: 'rgba(48,54,61,0.5)', lineWidth: 0.5 },
+            ticks: { color: '#8b949e', font: { family: "'JetBrains Mono'", size: 9 } },
+            border: { color: '#30363d' },
+          }
+        }
+      },
+      plugins: [{
+        id: 'crosshair',
+        afterEvent(chart, args) {
+          chart._crosshair = args.event.type === 'mousemove' ? { x: args.event.x, y: args.event.y } : null;
+          if (args.event.type === 'mouseout') chart._crosshair = null;
+          chart.draw();
+        },
+        afterDatasetsDraw(chart) {
+          if (!chart._crosshair) return;
+          const { ctx, chartArea: a } = chart;
+          const { x, y } = chart._crosshair;
+          if (x < a.left || x > a.right || y < a.top || y > a.bottom) return;
+          ctx.save();
+          ctx.setLineDash([3, 3]);
+          ctx.lineWidth = 0.5;
+          ctx.strokeStyle = 'rgba(139,148,158,0.3)';
+          ctx.beginPath();
+          ctx.moveTo(x, a.top);
+          ctx.lineTo(x, a.bottom);
+          ctx.moveTo(a.left, y);
+          ctx.lineTo(a.right, y);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }, {
+        /* connection lines plugin */
+        id: 'connectionLines',
+        afterDatasetsDraw(chart) {
+          const qDs = chart.data.datasets[1];
+          if (!qDs.data.length) return;
+          const meta0 = chart.getDatasetMeta(0);
+          const meta1 = chart.getDatasetMeta(1);
+          if (!meta1.data.length) return;
+          const qPt = meta1.data[0];
+          const highlightIds = chart._highlightIds || [];
+          if (!highlightIds.length) return;
+          const { ctx } = chart;
+          ctx.save();
+          ctx.setLineDash([4, 4]);
+          ctx.lineWidth = 0.8;
+          ctx.strokeStyle = 'rgba(232,168,56,0.35)';
+          meta0.data.forEach((pt, i) => {
+            if (highlightIds.includes(i)) {
+              ctx.beginPath();
+              ctx.moveTo(qPt.x, qPt.y);
+              ctx.lineTo(pt.x, pt.y);
+              ctx.stroke();
+            }
+          });
+          ctx.restore();
+        }
+      }]
+    });
+  }
+
+  async function loadItems() {
+    try {
+      const r = await api('/items');
+      const data = await r.json();
+      allItems = Array.isArray(data) ? data : (data.items || []);
+      updateChartData();
+    } catch {
+      // silent
+    }
+  }
+
+  function updateChartData(highlightIds) {
+    if (!scatterChart) return;
+    const points = allItems.map(it => {
+      const coords = it.pca_coords || [0, 0];
+      return { x: coords[0], y: coords[1] };
+    });
+    const bgColors = allItems.map((it, i) => {
+      if (highlightIds && highlightIds.includes(i)) {
+        return '#ffffff';
+      }
+      return catColor(it.category);
+    });
+    const borderColors = allItems.map((it, i) => {
+      if (highlightIds && highlightIds.includes(i)) {
+        return '#e8a838';
+      }
+      return 'transparent';
+    });
+    const radii = allItems.map((it, i) => {
+      if (highlightIds && highlightIds.includes(i)) return 7;
+      return 4;
+    });
+
+    scatterChart.data.datasets[0].data = points;
+    scatterChart.data.datasets[0].pointBackgroundColor = bgColors;
+    scatterChart.data.datasets[0].pointBorderColor = borderColors;
+    scatterChart.data.datasets[0].pointRadius = radii;
+    scatterChart._highlightIds = highlightIds || [];
+    scatterChart.update();
+  }
+
+  // ── SEARCH ──
+  function parseVector(str) {
+    const parts = str.split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length === 0) return null;
+    const nums = parts.map(Number);
+    if (nums.some(isNaN)) return null;
+    return nums;
+  }
+
+  $('#btn-search').addEventListener('click', doSearch);
+  $('#search-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+  async function doSearch() {
+    const input = $('#search-input').value.trim();
+    const errEl = $('#search-error');
+    errEl.classList.remove('visible');
+    errEl.textContent = '';
+
+    const vec = parseVector(input);
+    if (!vec) {
+      errEl.textContent = 'Error: demo search expects a comma-separated numeric vector (e.g. 16 dimensions).';
+      errEl.classList.add('visible');
+      return;
+    }
+
+    const k = parseInt($('#k-input').value) || 5;
+    const metric = getToggleValue('metric-toggle');
+    const algo = getToggleValue('algo-toggle');
+    const vStr = vec.join(',');
+
+    const btn = $('#btn-search');
+    setLoading(btn, true);
+
+    try {
+      const r = await api(`/search?v=${encodeURIComponent(vStr)}&k=${k}&metric=${metric}&algo=${algo}`);
+      const data = await r.json();
+      const results = data.results || data || [];
+      renderResults(results);
+
+      // highlight on chart
+      const resultIds = results.map(r => {
+        const itemIdx = allItems.findIndex(it => String(it.id) === String(r.id));
+        return itemIdx;
+      }).filter(i => i >= 0);
+
+      // set query point (use first PCA coord if available, else 0,0)
+      if (data.query_pca) {
+        scatterChart.data.datasets[1].data = [{ x: data.query_pca[0], y: data.query_pca[1] }];
+      } else {
+        // approximate: average of result points
+        if (resultIds.length) {
+          const avgX = resultIds.reduce((s, i) => s + (allItems[i].pca_coords?.[0] || 0), 0) / resultIds.length;
+          const avgY = resultIds.reduce((s, i) => s + (allItems[i].pca_coords?.[1] || 0), 0) / resultIds.length;
+          scatterChart.data.datasets[1].data = [{ x: avgX, y: avgY }];
+        }
+      }
+
+      updateChartData(resultIds);
+    } catch (e) {
+      errEl.textContent = `Error: ${e.message}`;
+      errEl.classList.add('visible');
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+  function renderResults(results) {
+    const wrap = $('#search-results-wrap');
+    const body = $('#results-body');
+    body.innerHTML = '';
+
+    if (!results.length) {
+      wrap.style.display = 'block';
+      body.innerHTML = '<tr><td colspan="5" class="empty-state">No results found.</td></tr>';
+      return;
+    }
+
+    wrap.style.display = 'block';
+    results.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      const cc = catClass(r.category);
+      tr.innerHTML = `
+        <td style="color:var(--text2);">${i + 1}</td>
+        <td style="color:var(--accent2);">${escHtml(String(r.id).slice(0, 8))}</td>
+        <td>${escHtml(r.label || r.text || '--')}</td>
+        <td><span class="cat-dot ${cc}"></span>${escHtml(r.category || '--')}</td>
+        <td style="color:var(--accent);">${typeof r.distance === 'number' ? r.distance.toFixed(6) : '--'}</td>
+      `;
+      body.appendChild(tr);
+    });
+  }
+
+  // ── BENCHMARK ──
+  $('#btn-compare').addEventListener('click', doBenchmark);
+
+  async function doBenchmark() {
+    const input = $('#search-input').value.trim();
+    const errEl = $('#search-error');
+    errEl.classList.remove('visible');
+
+    const vec = parseVector(input);
+    if (!vec) {
+      errEl.textContent = 'Error: enter a valid vector first to run benchmark comparison.';
+      errEl.classList.add('visible');
+      return;
+    }
+
+    const k = parseInt($('#k-input').value) || 5;
+    const metric = getToggleValue('metric-toggle');
+    const vStr = vec.join(',');
+    const btn = $('#btn-compare');
+    setLoading(btn, true);
+
+    try {
+      const r = await api(`/benchmark?v=${encodeURIComponent(vStr)}&k=${k}&metric=${metric}`);
+      const data = await r.json();
+      renderBenchmark(data);
+    } catch (e) {
+      errEl.textContent = `Benchmark error: ${e.message}`;
+      errEl.classList.add('visible');
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+  function renderBenchmark(data) {
+    const wrap = $('#benchmark-wrap');
+    const container = $('#bench-results');
+    wrap.style.display = 'block';
+    container.innerHTML = '';
+
+    const results = data.results || data;
+    if (!Array.isArray(results) && typeof results === 'object') {
+      // might be { hnsw: {time_ms: ...}, brute: {...}, "kd-tree": {...} }
+      const entries = Object.entries(results);
+      const times = entries.map(([name, val]) => ({
+        name: name.toUpperCase(),
+        time: typeof val === 'object' ? (val.time_ms || val.duration_ms || 0) : val
+      }));
+      renderBenchBars(container, times);
+      return;
+    }
+
+    if (Array.isArray(results)) {
+      const times = results.map(r => ({
+        name: (r.algorithm || r.algo || r.name || '').toUpperCase(),
+        time: r.time_ms || r.duration_ms || 0
+      }));
+      renderBenchBars(container, times);
+    }
+  }
+
+  function renderBenchBars(container, times) {
+    const maxTime = Math.max(...times.map(t => t.time), 0.01);
+    const colors = { 'HNSW': '#3fb950', 'KDTREE': '#58a6ff', 'BRUTE': '#e8a838' };
+
+    times.forEach(t => {
+      const pct = Math.max((t.time / maxTime) * 100, 2);
+      const color = colors[t.name] || '#8b949e';
+      const row = document.createElement('div');
+      row.className = 'bench-row';
+      row.innerHTML = `
+        <span class="bench-label">${escHtml(t.name)}</span>
+        <div class="bench-bar-track">
+          <div class="bench-bar-fill" style="width:${pct}%;background:${color};"></div>
+        </div>
+        <span class="bench-time">${t.time.toFixed(3)} ms</span>
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  // ── DOCUMENTS TAB ──
+  async function loadDocs() {
+    try {
+      const r = await api('/doc/list');
+      const data = await r.json();
+      const docs = data.documents || data.docs || data || [];
+      renderDocs(docs);
+    } catch {
+      renderDocs([]);
+    }
+
+    // update ollama warning
+    $('#ollama-warning').style.display = ollamaOnline ? 'none' : 'block';
+  }
+
+  function renderDocs(docs) {
+    const body = $('#docs-body');
+    const empty = $('#docs-empty');
+    body.innerHTML = '';
+
+    if (!docs.length) {
+      empty.style.display = 'block';
+      return;
+    }
+
+    empty.style.display = 'none';
+    docs.forEach(doc => {
+      const tr = document.createElement('tr');
+      const preview = (doc.text || doc.preview || doc.content || '').slice(0, 80);
+      tr.innerHTML = `
+        <td style="color:var(--accent2);">${escHtml(String(doc.id).slice(0, 7))}</td>
+        <td>${escHtml(doc.title || '--')}</td>
+        <td style="color:var(--text2);">${doc.chunk_count ?? doc.chunks ?? '--'}</td>
+        <td style="color:var(--text2);font-size:11px;">${escHtml(preview)}</td>
+        <td><button class="btn btn-danger" data-delete-id="${escHtml(String(doc.id))}">&#x2715;</button></td>
+      `;
+      body.appendChild(tr);
+    });
+
+    // attach delete handlers
+    $$('[data-delete-id]', body).forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.deleteId;
+        try {
+          await api(`/doc/delete/${encodeURIComponent(id)}`, { method: 'DELETE' });
+          loadDocs();
+        } catch (e) {
+          console.error('Delete failed', e);
+        }
+      });
+    });
+  }
+
+  $('#btn-embed').addEventListener('click', async () => {
+    const title = $('#doc-title').value.trim();
+    const text = $('#doc-text').value.trim();
+    const successEl = $('#embed-success');
+    successEl.textContent = '';
+
+    if (!text) return;
+
+    const btn = $('#btn-embed');
+    setLoading(btn, true);
+
+    try {
+      const r = await api('/doc/insert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, text })
+      });
+      const data = await r.json();
+      const chunks = data.chunks || data.chunk_count || '?';
+      successEl.textContent = `Inserted: ${chunks} chunk(s)`;
+      $('#doc-title').value = '';
+      $('#doc-text').value = '';
+      loadDocs();
+      fetchStatus();
+    } catch (e) {
+      successEl.textContent = '';
+      alert('Embed failed: ' + e.message);
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+
+  // ── ASK AI (RAG) ──
+  async function checkDocsForAsk() {
+    try {
+      const r = await api('/doc/list');
+      const data = await r.json();
+      const docs = data.documents || data.docs || data || [];
+      $('#ask-no-docs').style.display = docs.length ? 'none' : 'block';
+    } catch {
+      $('#ask-no-docs').style.display = 'block';
+    }
+  }
+
+  $('#btn-ask').addEventListener('click', doAsk);
+  $('#ask-input').addEventListener('keydown', e => { if (e.key === 'Enter') doAsk(); });
+
+  async function doAsk() {
+    const question = $('#ask-input').value.trim();
+    if (!question) return;
+
+    const output = $('#rag-output');
+    const ctxSection = $('#context-section');
+    const ctxChips = $('#context-chips');
+    output.innerHTML = '';
+    ctxSection.style.display = 'none';
+    ctxChips.innerHTML = '';
+
+    const btn = $('#btn-ask');
+    setLoading(btn, true);
+
+    // add blinking cursor
+    const cursorEl = document.createElement('span');
+    cursorEl.className = 'rag-cursor';
+    output.appendChild(cursorEl);
+
+    try {
+      const r = await fetch('/doc/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, k: 3 })
+      });
+
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullText = '';
+      let contextData = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr) continue;
+
+          try {
+            const evt = JSON.parse(jsonStr);
+            if (evt.done) {
+              contextData = evt.context || [];
+              break;
+            }
+            if (evt.token) {
+              fullText += evt.token;
+              // remove cursor, add text, re-add cursor
+              if (cursorEl.parentNode) cursorEl.remove();
+              output.textContent = fullText;
+              output.appendChild(cursorEl);
+              output.scrollTop = output.scrollHeight;
+            }
+          } catch {
+            // skip malformed
+          }
+        }
+
+        if (contextData) break;
+      }
+
+      // remove cursor
+      if (cursorEl.parentNode) cursorEl.remove();
+
+      // render context
+      if (contextData && contextData.length) {
+        ctxSection.style.display = 'block';
+        contextData.forEach((ctx, i) => {
+          const chip = document.createElement('div');
+          chip.className = 'context-chip';
+          const title = ctx.title || ctx.source || `Source ${i + 1}`;
+          const body = ctx.text || ctx.content || ctx.chunk || '';
+          chip.innerHTML = `
+            <div class="context-chip-header">
+              <span>${escHtml(title)}</span>
+              <span class="arrow">&#x25B8;</span>
+            </div>
+            <div class="context-chip-body">${escHtml(body)}</div>
+          `;
+          chip.addEventListener('click', () => chip.classList.toggle('open'));
+          ctxChips.appendChild(chip);
+        });
+      }
+
+    } catch (e) {
+      if (cursorEl.parentNode) cursorEl.remove();
+      output.textContent = `Error: ${e.message}`;
+      output.style.color = 'var(--danger)';
+      setTimeout(() => { output.style.color = ''; }, 3000);
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+  // ── INIT ──
+  initChart();
+  loadItems();
+
+})();
+</script>
+</body>
+</html>
