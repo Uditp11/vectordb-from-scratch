@@ -65,6 +65,15 @@ python app.py
 
 Start Ollama with `ollama serve` if it is not already running. Then open http://localhost:8080.
 
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+The tests check that brute force matches a NumPy sort, that KD-Tree matches brute force, that HNSW recall@10 stays above a measured floor, that PCA matches an SVD projection, and that the API routes which do not need Ollama work. They need no Ollama and no network. [docs/TESTING.md](docs/TESTING.md) explains each test and how the thresholds were chosen.
+
 ## Verification Script
 
 ```bash
@@ -151,7 +160,10 @@ vectordb-from-scratch/
 ├── app.py                 ← FastAPI server + Ollama client + REST endpoints
 ├── index.html             ← Frontend UI (Chart.js scatter plot, RAG chat)
 ├── verify_rag_pipeline.py ← Verification script (see above)
+├── tests/                 ← pytest suite (see docs/TESTING.md)
+├── docs/TESTING.md        ← What each test proves
 ├── requirements.txt       ← Python dependencies
+├── requirements-dev.txt   ← Test dependencies (pytest, httpx)
 └── README.md              ← This file
 ```
 
