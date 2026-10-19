@@ -216,4 +216,4 @@ Then in `app.py` change the default `model='llama3.2'` in `OllamaClient.generate
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).
