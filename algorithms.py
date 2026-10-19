@@ -91,18 +91,37 @@ class KDTree:
 
     Insertions and deletions trigger a full rebuild — this keeps the tree
     balanced and the implementation simple.
+
+    Pruning needs a lower bound on the distance to any point beyond a
+    splitting plane.  For Euclidean and Manhattan distance the gap to the
+    plane is such a bound.  Cosine distance has no such bound in raw
+    space, so a cosine tree (normalize=True) stores unit-length vectors:
+    for unit vectors cosine distance equals half the squared Euclidean
+    distance, so gap**2 / 2 is a valid bound.
     """
 
-    def __init__(self, dim):
+    def __init__(self, dim, normalize=False):
         """
         Parameters
         ----------
         dim : int
             Dimensionality of the vectors.
+        normalize : bool
+            True for a tree searched with cosine distance, False for
+            Euclidean or Manhattan distance.
         """
         self.dim = dim
+        self.normalize = normalize
         self.root = None
         self.points = []  # list of (id, vector) for rebuilds
+        self._vecs = []   # vectors the tree splits on (unit length if normalize)
+
+    def _prepare(self, vec):
+        """Scale *vec* to unit length for a cosine tree (zero vectors stay zero)."""
+        if not self.normalize:
+            return list(vec)
+        norm = math.sqrt(sum(x * x for x in vec))
+        return [x / norm for x in vec] if norm else list(vec)
 
     # ── Build / Rebuild ──────────────────────────────────────────────
 
@@ -111,6 +130,7 @@ class KDTree:
         Build (or rebuild) the KD-Tree from a list of (id, vector) pairs.
         """
         self.points = list(points)
+        self._vecs = [self._prepare(vec) for _, vec in self.points]
         self.root = self._build(list(range(len(self.points))), depth=0)
 
     def _build(self, indices, depth):
@@ -122,13 +142,13 @@ class KDTree:
         split_dim = depth % self.dim
 
         # Sort indices by the splitting dimension and pick the median
-        indices.sort(key=lambda i: self.points[i][1][split_dim])
+        indices.sort(key=lambda i: self._vecs[i][split_dim])
         median = len(indices) // 2
 
         idx = indices[median]
         node = _KDNode(
             id=self.points[idx][0],
-            point=self.points[idx][1],
+            point=self._vecs[idx],
             split_dim=split_dim,
             left=self._build(indices[:median], depth + 1),
             right=self._build(indices[median + 1:], depth + 1),
@@ -162,8 +182,10 @@ class KDTree:
         list[tuple[any, float]]
             Up to k results as (id, distance), sorted ascending.
         """
-        if self.root is None:
+        if self.root is None or k <= 0:
             return []
+
+        query = self._prepare(query)
 
         # Max-heap (negate distances so heapq gives us the *farthest*)
         # Each element: (-distance, id)
@@ -193,8 +215,10 @@ class KDTree:
             _search(first)
 
             # Prune: only visit the other subtree if the splitting plane
-            # is closer than the farthest current neighbor.
-            if len(best) < k or abs(diff) < -best[0][0]:
+            # is closer than the farthest current neighbor.  The bound is
+            # the gap to the plane, or gap**2 / 2 in a cosine tree.
+            bound = diff * diff / 2 if self.normalize else abs(diff)
+            if len(best) < k or bound < -best[0][0]:
                 _search(second)
 
         _search(self.root)

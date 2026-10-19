@@ -72,17 +72,37 @@ def test_kdtree_equals_brute_force(seed, dim, fn):
         assert [i for i, _ in tree.search(q, K, fn)] == brute_ids(q, points, K, fn)
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "Known limitation: KD-Tree pruning compares the distance to the splitting "
-    "plane with the current best distance. That bound holds for Euclidean and "
-    "Manhattan, not for cosine. See docs/TESTING.md."))
-def test_kdtree_with_cosine_equals_brute_force():
-    points, queries = random_points(0, 300, 8)
-    tree = KDTree(8)
+@pytest.mark.parametrize("dim", [2, 3, 8, 16])
+@pytest.mark.parametrize("seed", [0, 1, 2])
+def test_cosine_kdtree_equals_brute_force(seed, dim):
+    points, queries = random_points(seed, 300, dim)
+    tree = KDTree(dim, normalize=True)
     tree.build(points)
     for q in queries:
         got = [i for i, _ in tree.search(q, K, cosine_distance)]
         assert got == brute_ids(q, points, K, cosine_distance)
+
+
+def test_cosine_kdtree_with_zero_vectors():
+    points, queries = random_points(0, 200, 4)
+    points = [(str(i), v) for i, v in points]
+    points += [("zero_a", [0.0] * 4), ("zero_b", [0.0] * 4)]
+    tree = KDTree(4, normalize=True)
+    tree.build(points)
+    for q in queries:
+        got = [i for i, _ in tree.search(q, 210, cosine_distance)]
+        assert got[:K] == brute_ids(q, points, K, cosine_distance)
+        assert set(got) == {i for i, _ in points}
+    # A zero query is at cosine distance 1.0 from everything.
+    dists = [d for _, d in tree.search([0.0] * 4, K, cosine_distance)]
+    assert dists == [1.0] * K
+
+
+def test_kdtree_with_k_zero_returns_nothing():
+    points, _ = random_points(0, 50, 3)
+    tree = KDTree(3)
+    tree.build(points)
+    assert tree.search([0.0, 0.0, 0.0], 0, euclidean_distance) == []
 
 
 def test_kdtree_insert_and_delete_rebuild():
