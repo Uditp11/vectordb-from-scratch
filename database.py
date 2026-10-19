@@ -248,7 +248,8 @@ class VectorDB:
 
         # Indices
         self.brute = BruteForce()
-        self.kdtree = KDTree(self.DIM)
+        self.kdtree = KDTree(self.DIM)                         # Euclidean, Manhattan
+        self.kdtree_cosine = KDTree(self.DIM, normalize=True)  # cosine
         self.hnsw = HNSW(self.DIM, M=16, ef_construction=200)
 
         # Load demo data
@@ -256,10 +257,8 @@ class VectorDB:
             self.items[item['id']] = dict(item)
             self.hnsw.insert(item['id'], item['vector'])
 
-        # Build KD-Tree once with all demo points
-        self.kdtree.build(
-            [(item['id'], item['vector']) for item in DEMO_VECTORS]
-        )
+        # Build the KD-Trees once with all demo points
+        self._rebuild_kdtree()
 
     # ── CRUD ─────────────────────────────────────────────────────────
 
@@ -308,7 +307,8 @@ class VectorDB:
                        for item in self.items.values()]
             raw = self.brute.search(query, vectors, k, dist_fn)
         elif algo == 'kdtree':
-            raw = self.kdtree.search(query, k, dist_fn)
+            tree = self.kdtree_cosine if dist_fn is cosine_distance else self.kdtree
+            raw = tree.search(query, k, dist_fn)
         elif algo == 'hnsw':
             raw = self.hnsw.search(query, k, dist_fn, ef=max(50, k * 2))
         else:
@@ -397,10 +397,11 @@ class VectorDB:
     # ── Internal ─────────────────────────────────────────────────────
 
     def _rebuild_kdtree(self):
-        """Rebuild the KD-Tree from the current items."""
+        """Rebuild both KD-Trees from the current items."""
         points = [(item['id'], item['vector'])
                   for item in self.items.values()]
         self.kdtree.build(points)
+        self.kdtree_cosine.build(points)
 
 
 # =====================================================================

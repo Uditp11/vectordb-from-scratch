@@ -4,6 +4,7 @@ app.py builds the demo VectorDB at import time and only contacts Ollama inside
 the /doc/* and /status routes, so those routes are left out here.
 """
 
+import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
@@ -31,6 +32,26 @@ def test_search_finds_the_query_vector_itself(algo):
     r = client.get("/search", params=params)
     assert r.status_code == 200
     assert r.json()["results"][0]["id"] == DEMO_VECTORS[0]["id"]
+
+
+@pytest.mark.parametrize("metric", ["cosine", "euclidean", "manhattan"])
+def test_kdtree_route_matches_brute_force(metric):
+    rng = np.random.default_rng(0)
+    for q in rng.random((20, 16)):
+        params = {"v": ",".join(map(str, q)), "k": 5, "metric": metric}
+        # Compare distances, not ids: the hand-made demo vectors give some
+        # exact ties, and tied items may come back in either order.
+        dists = {}
+        for algo in ("brute", "kdtree"):
+            body = client.get("/search", params={**params, "algo": algo}).json()
+            dists[algo] = [r["distance"] for r in body["results"]]
+        assert dists["kdtree"] == dists["brute"]
+
+
+def test_search_with_k_zero():
+    for algo in ("brute", "kdtree", "hnsw"):
+        r = client.get("/search", params={"v": QUERY, "k": 0, "algo": algo})
+        assert r.status_code == 200 and r.json()["results"] == []
 
 
 def test_search_rejects_bad_input():

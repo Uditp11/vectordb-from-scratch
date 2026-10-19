@@ -194,7 +194,7 @@ vectordb-from-scratch/
 
 ```
 BruteForce          O(N·d) per query    Exact, baseline
-KDTree              O(log N) at best    Exact for Euclidean and Manhattan, axis-aligned partitioning
+KDTree              O(log N) at best    Exact, axis-aligned partitioning
 HNSW                about O(log N)      Approximate, multilayer small-world graph
 
 VectorDB            One interface over all 3 (16D demo vectors)
@@ -220,7 +220,7 @@ Nodes are inserted into a multilayer graph. Each node is randomly assigned a max
 
 Binary space partitioning. Each node splits space along one dimension, cycling through all dimensions. Search skips a whole subtree when the closest possible point in it cannot beat the current best.
 
-That skip compares the distance to the splitting plane with the current best distance. This is a valid bound for Euclidean and Manhattan distance, so KD-Tree search is exact for those two. It is not a valid bound for cosine distance, so with cosine the KD-Tree can return different results from Brute Force.
+That skip needs a lower bound on the distance to any point beyond the splitting plane. For Euclidean and Manhattan distance the gap to the plane is that bound. Cosine distance has no such bound on raw vectors, so `VectorDB` keeps a second KD-Tree for cosine that stores every vector scaled to length 1. For unit vectors, cosine distance is half the squared Euclidean distance, so half the squared gap is a valid bound. That makes KD-Tree search exact for all three metrics.
 
 **Weakness:** It slows down in high dimensions (the curse of dimensionality). It works best in low dimensions.
 
