@@ -74,6 +74,25 @@ python -m pytest
 
 The tests check that brute force matches a NumPy sort, that KD-Tree matches brute force, that HNSW recall@10 stays above a measured floor, that PCA matches an SVD projection, and that the API routes which do not need Ollama work. They need no Ollama and no network. [docs/TESTING.md](docs/TESTING.md) explains each test and how the thresholds were chosen.
 
+## Benchmark
+
+Measured on 2026-10-19 with `python scripts/benchmark.py --sizes 1000 10000 --dims 16 128 --queries 100` on synthetic random vectors (not real embeddings), Euclidean distance, k=10. Machine, settings and notes are in [docs/BENCHMARK.md](docs/BENCHMARK.md).
+
+| N | d | Algorithm | Recall@10 | Median latency (ms) | Build time (s) |
+|---|---|---|---|---|---|
+| 1,000 | 16 | BruteForce | 1.000 | 35.17 | 0.00 |
+| 1,000 | 16 | KDTree | 1.000 | 40.88 | 0.00 |
+| 1,000 | 16 | HNSW | 0.995 | 26.91 | 18.03 |
+| 1,000 | 128 | BruteForce | 1.000 | 53.12 | 0.00 |
+| 1,000 | 128 | KDTree | 1.000 | 54.81 | 0.02 |
+| 1,000 | 128 | HNSW | 0.970 | 38.77 | 160.91 |
+| 10,000 | 16 | BruteForce | 1.000 | 289.31 | 0.00 |
+| 10,000 | 16 | KDTree | 1.000 | 299.35 | 0.14 |
+| 10,000 | 16 | HNSW | 0.975 | 33.48 | 548.82 |
+| 10,000 | 128 | BruteForce | 1.000 | 558.03 | 0.00 |
+| 10,000 | 128 | KDTree | 1.000 | 582.73 | 0.16 |
+| 10,000 | 128 | HNSW | 0.769 | 79.24 | 3325.66 |
+
 ## Verification Script
 
 ```bash
@@ -162,6 +181,8 @@ vectordb-from-scratch/
 ├── verify_rag_pipeline.py ← Verification script (see above)
 ├── tests/                 ← pytest suite (see docs/TESTING.md)
 ├── docs/TESTING.md        ← What each test proves
+├── scripts/benchmark.py   ← Recall and latency benchmark
+├── docs/BENCHMARK.md      ← Benchmark results
 ├── requirements.txt       ← Python dependencies
 ├── requirements-dev.txt   ← Test dependencies (pytest, httpx)
 └── README.md              ← This file
