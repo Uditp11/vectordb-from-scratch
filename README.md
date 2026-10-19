@@ -1,5 +1,7 @@
 # VectorDB from Scratch
 
+[![tests](https://github.com/Uditp11/vectordb-from-scratch/actions/workflows/tests.yml/badge.svg)](https://github.com/Uditp11/vectordb-from-scratch/actions/workflows/tests.yml)
+
 A small vector database written in Python, with a web UI. It implements **HNSW**, **KD-Tree** and **Brute Force** search side by side, plus a **RAG pipeline** that uses a local LLM through Ollama.
 
 I built it to learn how vector databases index and search embeddings. The search algorithms in `algorithms.py` use only the Python standard library. PCA in `pca.py` is written by hand on top of NumPy.
@@ -72,7 +74,7 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-The tests check that brute force matches a NumPy sort, that KD-Tree matches brute force, that HNSW recall@10 stays above a measured floor, that PCA matches an SVD projection, and that the API routes which do not need Ollama work. They need no Ollama and no network. [docs/TESTING.md](docs/TESTING.md) explains each test and how the thresholds were chosen.
+The tests check that brute force matches a NumPy sort, that KD-Tree matches brute force, that HNSW recall@10 stays above a measured floor, that PCA matches an SVD projection, and that the API routes which do not need Ollama work. They need no Ollama and no network. GitHub Actions runs them on Python 3.10 and 3.13 for every push and pull request. [docs/TESTING.md](docs/TESTING.md) explains each test and how the thresholds were chosen.
 
 ## Benchmark
 
