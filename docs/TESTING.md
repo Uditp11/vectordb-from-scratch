@@ -86,6 +86,10 @@ When I compared KD-Tree with brute force on random 8D data (5 seeds, 20 queries 
 - **Threshold (floor):** the lowest recall the test accepts.
 - **Latency:** how long one query takes, from call to result.
 - **Percentile:** the value below which a given share of measurements fall. The 50th percentile (the median) is the middle value: half the queries were faster and half slower. The median is less affected by a few unusually slow runs than the average is.
+- **Median latency:** the 50th percentile of the per-query times. `scripts/benchmark.py` reports it for each algorithm (see [BENCHMARK.md](BENCHMARK.md)).
+- **Build time:** how long it takes to create an index before the first query. KD-Tree sorts the points once. HNSW inserts them one by one, running a beam search for each.
+- **ef:** the beam width of an HNSW search, meaning how many candidates it keeps while walking the graph. A larger ef checks more nodes, so recall goes up and latency goes up.
+- **Synthetic data:** vectors generated at random by the script, not taken from a real dataset. They are easy to reproduce with a seed, but they have no clusters, so results on real embeddings can differ.
 - **xfail:** pytest's marker for a test that is expected to fail. With `strict=True`, an unexpected pass counts as a failure.
 
 ## Interview questions
